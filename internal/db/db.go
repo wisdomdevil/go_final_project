@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"log"
 	"os"
-	"path/filepath"
 
 	_ "modernc.org/sqlite"
 )
@@ -53,21 +52,8 @@ func dbCreate(dbFilePath string) {
 }
 
 // dbConnection checks DB existance and creates if it doesn't exist.
-func DbConnection() {
-	appPath, err := os.Executable()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	dbFile := filepath.Join(filepath.Dir(appPath), "scheduler.db")
-
-	// Get the TODO_DBFILE environment variable
-	pathDb := os.Getenv("TODO_DBFILE")
-	if pathDb != "" {
-		dbFile = pathDb
-	}
-
-	if !checkFileExists(dbFile) {
-		dbCreate(dbFile)
+func CreateDatabase(dbPath string) {
+	if !checkFileExists(dbPath) {
+		dbCreate(dbPath)
 	}
 }

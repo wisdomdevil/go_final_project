@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/wisdomdevil/go_final_project/internal/config"
@@ -26,9 +27,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("Config error.")
 	}
-	db.DbConnection()
+	// Получаем директорию с бинарем
+	appPath, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	//Задаем путь до базы данных
+	dbPath := filepath.Join(filepath.Dir(appPath), "scheduler.db")
 
-	db, err := sql.Open("sqlite", "scheduler.db")
+	// Get the TODO_DBFILE environment variable
+	pathDb := os.Getenv("TODO_DBFILE")
+	if pathDb != "" {
+		dbPath = pathDb
+	}
+	//Проверяем есть ли база данных, если нет - создаем
+	db.CreateDatabase(dbPath)
+
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Println(err)
 		return

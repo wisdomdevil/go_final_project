@@ -4,6 +4,10 @@ import (
 	"fmt"
 )
 
+const (
+	DefaultPassword = "123456"
+)
+
 type Config struct {
 	AppPassword         string
 	EncryptionSecretKey string // секретный ключ шифрования
@@ -12,8 +16,11 @@ type Config struct {
 
 // NewConfig конструктор объекта конфигурации приложения
 func NewConfig(appPass string, encKey string, apiPort string) (*Config, error) {
+	if appPass == "" {
+		appPass = DefaultPassword
+	}
 	if appPass == "" || encKey == "" {
-		return nil, fmt.Errorf("Invalid config.")
+		return nil, fmt.Errorf("invalid config")
 	}
 
 	if apiPort == "" {
