@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
+	_ "modernc.org/sqlite"
+
 	"github.com/wisdomdevil/go_final_project/internal/config"
 	"github.com/wisdomdevil/go_final_project/internal/db"
 	"github.com/wisdomdevil/go_final_project/internal/db/repo"
 	"github.com/wisdomdevil/go_final_project/internal/handlers"
-	_ "modernc.org/sqlite"
 )
 
 var webDir = "./web/"

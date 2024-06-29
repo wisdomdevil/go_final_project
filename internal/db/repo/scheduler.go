@@ -10,6 +10,10 @@ import (
 	"github.com/wisdomdevil/go_final_project/internal/models"
 )
 
+const (
+	limitConst = 20
+)
+
 // чтобы оперировать Tasks (TaskCreationRequest), нужна всегда ссылка на БД
 type TasksRepository struct {
 	db *sql.DB
@@ -101,14 +105,13 @@ func (tr TasksRepository) GetTask(id int) (models.Task, error) {
 	// заполняем объект TaskCreationRequest данными из таблицы
 	err := row.Scan(&s.ID, &s.Date, &s.Title, &s.Comment, &s.Repeat)
 	if err != nil {
-		return s, err
+		return models.Task{}, err
 	}
 	return s, nil
 }
 
 // Из таблицы должны вернуться сроки с ближайшими датами.
 func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
-	limitConst := 20
 	today := time.Now().Format("20060102")
 
 	rows, err := tr.db.Query("SELECT id, date, title, comment, repeat FROM scheduler WHERE date >= :today "+
@@ -131,6 +134,10 @@ func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
 			return nil, err
 		}
 		result = append(result, s)
+	}
+	//Проверяем успешное завершение цикла
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return result, nil
@@ -183,7 +190,6 @@ type QueryData struct {
 
 // Из таблицы должна вернуться срока в соответсвии с критерием поиска search.
 func (tr TasksRepository) SearchTasks(searchData SearchQueryData) ([]models.Task, error) {
-	limitConst := 20
 	var rows *sql.Rows
 
 	queryData := searchData.GetQueryData()
@@ -213,6 +219,10 @@ func (tr TasksRepository) SearchTasks(searchData SearchQueryData) ([]models.Task
 			return nil, err
 		}
 		result = append(result, s)
+	}
+	//Проверяем успешное завершение цикла
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return result, nil

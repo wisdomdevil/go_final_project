@@ -14,6 +14,10 @@ type DRepeat struct {
 	num int
 }
 
+const (
+	sunday = 7
+)
+
 // ParseDRepeat заполняет структуру DRepeat
 // Сигнатура правила d: d <число> — задача переносится на указанное число дней.
 // Максимально допустимое число равно 400
@@ -103,8 +107,8 @@ func (wr *WRepeat) GetNextDate(now time.Time, date time.Time) (time.Time, error)
 	sort.Ints(wr.nums) // сортируем, чтобы сразу взять тот день, что больше номером, чем сегодняшний
 
 	numDay := int(todayWeekday)
-	if numDay == 7 {
-		numDay = 0
+	if numDay == sunday {
+		numDay = int(time.Sunday)
 	}
 
 	for _, n := range wr.nums {

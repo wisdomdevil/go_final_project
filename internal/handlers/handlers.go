@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/wisdomdevil/go_final_project/internal/config"
 	"github.com/wisdomdevil/go_final_project/internal/dateutil"
 	"github.com/wisdomdevil/go_final_project/internal/db/repo"
@@ -60,9 +61,12 @@ func (e apiError) ToJson() ([]byte, error) {
 	return res, nil
 }
 
-func RenderApiError(w http.ResponseWriter, err error, status int) {
+func RenderApiErrorAndResponse(w http.ResponseWriter, err error, status int) {
 	apiErr := NewApiError(err)
-	errorJson, _ := apiErr.ToJson()
+	errorJson, err := apiErr.ToJson()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 	http.Error(w, string(errorJson), status)
 }
 
@@ -75,17 +79,18 @@ func GetNextDay(w http.ResponseWriter, r *http.Request) {
 	repeat := r.URL.Query().Get("repeat")
 
 	//check date
+	//Тут спорно, так и не смог определиться, так-то клиент может какую-нибудь дичь закинуть и вернется ошибка, значит это BadRequest, но ошибка произошла на стороне сервера.
 	_, err := strconv.Atoi(date)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidDateError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidDateError), http.StatusBadRequest)
 		return
 	}
-
+	//такая же история что и выше, оставил BadRequest
 	dtParsed, err := time.Parse("20060102", date)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidDateError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidDateError), http.StatusBadRequest)
 		return
 	}
 
@@ -93,7 +98,7 @@ func GetNextDay(w http.ResponseWriter, r *http.Request) {
 	_, err = strconv.Atoi(now)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidNowDateError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidNowDateError), http.StatusBadRequest)
 		return
 	}
 
@@ -101,18 +106,18 @@ func GetNextDay(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err := fmt.Errorf("Wrong date: %v\n", err)
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidNowDateError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidNowDateError), http.StatusBadRequest)
 		return
 	}
 
 	// check repeat
 	if repeat == "" {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidRepeatError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidRepeatError), http.StatusBadRequest)
 		return
 	} else if !repeatRulePattern.MatchString(repeat) {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidRepeatError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidRepeatError), http.StatusBadRequest)
 		return
 	}
 
@@ -159,7 +164,7 @@ func (a *Api) TaskHandler(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(idToSearch)
 		if err != nil {
 			log.Println("error:", err)
-			RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+			RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
 			return // иначе пойдем в a.GetTask(w, r, id) это стиль с гардами (защитниками). иначе надо написать else {a.GetTask(w, r, id)}
 		}
 		a.GetTask(w, r, id)
@@ -174,7 +179,7 @@ func (a *Api) TaskHandler(w http.ResponseWriter, r *http.Request) {
 		if idToSearch != "" {
 			a.DeleteTask(w, r)
 		} else {
-			RenderApiError(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
+			RenderApiErrorAndResponse(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
 			return
 		}
 	}
@@ -187,7 +192,7 @@ func (a *Api) GetTaskByIdHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(idToSearch)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
 		return
 	}
 	a.GetTask(w, r, id)
@@ -206,7 +211,7 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 	foundTasks, err := a.repo.GetAllTasks()
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
+		RenderApiErrorAndResponse(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
 		return
 	}
 
@@ -216,7 +221,7 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 	resp, err := json.Marshal(result)
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(MarshallingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(MarshallingError), http.StatusBadRequest)
 		return
 	}
 
@@ -225,7 +230,6 @@ func (a *Api) GetAllTasks(w http.ResponseWriter) {
 	_, err = w.Write(resp)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(ResponseWriteError), http.StatusBadRequest)
 		return
 	}
 }
@@ -234,7 +238,7 @@ func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string)
 	foundTasks, err := a.repo.SearchTasks(repo.QueryDataFromString(search))
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
+		RenderApiErrorAndResponse(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
 		return
 	}
 
@@ -244,7 +248,7 @@ func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string)
 	resp, err := json.Marshal(result)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(MarshallingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(MarshallingError), http.StatusBadRequest)
 		return
 	}
 
@@ -254,7 +258,6 @@ func (a *Api) SearchTasks(w http.ResponseWriter, r *http.Request, search string)
 	_, err = w.Write(resp)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(ResponseWriteError), http.StatusBadRequest)
 		return
 	}
 }
@@ -266,7 +269,7 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(ReadingError), http.StatusBadRequest) // 400
+		RenderApiErrorAndResponse(w, fmt.Errorf(ReadingError), http.StatusBadRequest) // 400
 		return
 	}
 	log.Println("received:", buf.String())
@@ -275,21 +278,21 @@ func (a *Api) CreateTask(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(buf.Bytes(), &parseBody)
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(UnMarshallingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(UnMarshallingError), http.StatusBadRequest)
 		return
 	}
 
 	err = parseBody.ValidateAndNormalizeDate()
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(ValidatingDateError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(ValidatingDateError), http.StatusBadRequest)
 		return
 	}
 
 	id, err := a.repo.AddTask(parseBody)
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -305,7 +308,7 @@ func (a *Api) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(ReadingError), http.StatusBadRequest) // 400
+		RenderApiErrorAndResponse(w, fmt.Errorf(ReadingError), http.StatusBadRequest) // 400
 		return
 	}
 
@@ -313,41 +316,41 @@ func (a *Api) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(buf.Bytes(), &parseBody)
 	if err != nil {
 		log.Println("err:", err)
-		RenderApiError(w, fmt.Errorf(UnMarshallingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(UnMarshallingError), http.StatusBadRequest)
 		return
 	}
 
 	err = parseBody.ValidateAndNormalizeDate()
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(ValidatingDateError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(ValidatingDateError), http.StatusBadRequest)
 		return
 	}
 	idToSearch, err := strconv.Atoi(parseBody.ID)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
 		return
 	}
 
 	_, err = a.repo.GetTask(idToSearch)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
 		return
 	}
 
 	err = a.repo.UpdateTaskInBd(parseBody)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	jsonItem, err := json.Marshal(parseBody)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(MarshallingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(MarshallingError), http.StatusBadRequest)
 		return
 	}
 
@@ -363,20 +366,18 @@ func (a *Api) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(idToSearch)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
 		return
 	}
 
 	err = a.repo.DeleteTask(id)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusInternalServerError) // 500
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-		WriteResponse(w, []byte("{}")) // пустой JSON
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusInternalServerError) // 500
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+	WriteResponse(w, []byte("{}")) // пустой JSON
 }
 
 func (a *Api) TaskDoneHandler(w http.ResponseWriter, r *http.Request) {
@@ -386,7 +387,7 @@ func (a *Api) TaskDoneHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(idToSearch)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
 		return
 	}
 
@@ -398,13 +399,11 @@ func (a *Api) TaskDoneHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-		WriteResponse(w, []byte("{}")) // w.Write(resp)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+	WriteResponse(w, []byte("{}")) // w.Write(resp)
 }
 
 func (a *Api) GetTask(w http.ResponseWriter, r *http.Request, id int) {
@@ -412,14 +411,14 @@ func (a *Api) GetTask(w http.ResponseWriter, r *http.Request, id int) {
 	log.Println("we are in GetTask", "foundTask:", foundTask)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
+		RenderApiErrorAndResponse(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError) // 500
 		return
 	}
 
 	resp, err := json.Marshal(foundTask)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(MarshallingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(MarshallingError), http.StatusInternalServerError) // 500
 		return
 	}
 
@@ -428,7 +427,6 @@ func (a *Api) GetTask(w http.ResponseWriter, r *http.Request, id int) {
 	_, err = w.Write(resp)
 	if err != nil {
 		log.Println("error:", err)
-		RenderApiError(w, fmt.Errorf(ResponseWriteError), http.StatusBadRequest)
 		return
 	}
 }
@@ -439,7 +437,7 @@ func (a *Api) SigninHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		RenderApiError(w, fmt.Errorf(ReadingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(ReadingError), http.StatusBadRequest)
 		return
 	}
 
@@ -447,7 +445,7 @@ func (a *Api) SigninHandler(w http.ResponseWriter, r *http.Request) {
 	reqBody := signinRequest{}
 	err = json.Unmarshal(buf.Bytes(), &reqBody)
 	if err != nil {
-		RenderApiError(w, fmt.Errorf(UnMarshallingError), http.StatusBadRequest)
+		RenderApiErrorAndResponse(w, fmt.Errorf(UnMarshallingError), http.StatusBadRequest)
 		return
 	}
 
@@ -456,21 +454,21 @@ func (a *Api) SigninHandler(w http.ResponseWriter, r *http.Request) {
 	hashedEnvPassword := HashPassword([]byte(a.config.AppPassword), secret)
 
 	if hashedUserPassword != hashedEnvPassword {
-		RenderApiError(w, fmt.Errorf("Wrong password."), http.StatusUnauthorized)
+		RenderApiErrorAndResponse(w, fmt.Errorf("Wrong password."), http.StatusUnauthorized)
 		return
 	}
 
 	// получаем подписанный токен
 	tokenValue, err := createToken(reqBody.Password, a.config.EncryptionSecretKey)
 	if err != nil {
-		RenderApiError(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InternalServerError), http.StatusInternalServerError)
 	}
 
 	// записываем в response Body токен
 	response := signinResponse{Token: tokenValue}
 	respBody, err := json.Marshal(response)
 	if err != nil {
-		RenderApiError(w, fmt.Errorf(MarshallingError), http.StatusInternalServerError)
+		RenderApiErrorAndResponse(w, fmt.Errorf(MarshallingError), http.StatusInternalServerError)
 		return
 	}
 
@@ -490,7 +488,7 @@ func (a *Api) Auth(next http.HandlerFunc) http.HandlerFunc {
 			// получаем куку
 			cookie, err := r.Cookie("token")
 			if err != nil {
-				RenderApiError(w, fmt.Errorf("Empty token."), http.StatusUnauthorized)
+				RenderApiErrorAndResponse(w, fmt.Errorf("Empty token."), http.StatusUnauthorized)
 				return
 			}
 			jwtFromRequest = cookie.Value
@@ -503,14 +501,14 @@ func (a *Api) Auth(next http.HandlerFunc) http.HandlerFunc {
 				return secret, nil
 			})
 			if err != nil {
-				RenderApiError(w, fmt.Errorf("Invalid token."), http.StatusUnauthorized)
+				RenderApiErrorAndResponse(w, fmt.Errorf("Invalid token."), http.StatusUnauthorized)
 				return
 			}
 
 			// приводим поле Claims к типу jwt.MapClaims
 			res, ok := jwtToken.Claims.(jwt.MapClaims)
 			if !ok {
-				RenderApiError(w, fmt.Errorf("Failed to typecast to jwt.MapCalims."), http.StatusUnauthorized)
+				RenderApiErrorAndResponse(w, fmt.Errorf("Failed to typecast to jwt.MapCalims."), http.StatusUnauthorized)
 				return
 			}
 
@@ -521,7 +519,7 @@ func (a *Api) Auth(next http.HandlerFunc) http.HandlerFunc {
 			// Чтобы получить строку, нужно снова сделать приведение типа к строке.
 			_, ok = pass.(string)
 			if !ok {
-				RenderApiError(w, fmt.Errorf("Failed to typecast to string."), http.StatusUnauthorized)
+				RenderApiErrorAndResponse(w, fmt.Errorf("Failed to typecast to string."), http.StatusUnauthorized)
 				return
 			}
 			// fmt.Println(password)
