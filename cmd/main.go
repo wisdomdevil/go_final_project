@@ -63,8 +63,10 @@ func main() {
 	// 3. GET /api/tasks возвращает набор тасков без фильтрации
 	// 4. GET /api/tasks?search=... возвращает набор тасков с фильрацией по параметру search
 	// 5. GET /api/tasks/{id} возвращает таск по id
-	// r.HandleFunc("/api/task", api.TaskHandler) // get, post, put, delete
-	r.HandleFunc("/api/task", api.Auth(api.TaskHandler))          // get, post, put, delete
+	r.Delete("/api/task", api.Auth(api.DeleteTaskHandler))
+	r.Put("/api/task", api.Auth(api.PutTaskHandler))
+	r.Post("/api/task", api.Auth(api.PostTaskHandler))
+	r.Get("/api/task", api.Auth(api.GetTaskHandler))
 	r.Get("/api/tasks", api.Auth(api.GetTasksHandler))            // search
 	r.Get("/api/tasks/{id}", api.Auth(api.GetTaskByIdHandler))    // http://localhost:7540/api/tasks/257
 	r.HandleFunc("/api/task/done", api.Auth(api.TaskDoneHandler)) // post И delete, здесь id - это параметр запроса

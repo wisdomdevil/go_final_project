@@ -154,34 +154,36 @@ func NewApi(repo *repo.TasksRepository, config *config.Config) *Api {
 	return &Api{repo: repo, config: config} // создаем ссылку на объект api со свойством repo, равным repo из параметров функции
 }
 
-func (a *Api) TaskHandler(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.Method == http.MethodGet:
-		idToSearch := r.URL.Query().Get("id") // это параметр запроса
+func (a *Api) GetTaskHandler(w http.ResponseWriter, r *http.Request) {
+	idToSearch := r.URL.Query().Get("id") // это параметр запроса
 
-		// if idToSearch != "" {
-		// не нужна проверка на пустой id, потому что strconv.Atoi в таком случае всё равно вернёт ошибку
-		id, err := strconv.Atoi(idToSearch)
-		if err != nil {
-			log.Println("error:", err)
-			RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
-			return // иначе пойдем в a.GetTask(w, r, id) это стиль с гардами (защитниками). иначе надо написать else {a.GetTask(w, r, id)}
-		}
-		a.GetTask(w, r, id)
+	// if idToSearch != "" {
+	// не нужна проверка на пустой id, потому что strconv.Atoi в таком случае всё равно вернёт ошибку
+	id, err := strconv.Atoi(idToSearch)
+	if err != nil {
+		log.Println("error:", err)
+		RenderApiErrorAndResponse(w, fmt.Errorf(InvalidIdError), http.StatusBadRequest)
+		return // иначе пойдем в a.GetTask(w, r, id) это стиль с гардами (защитниками). иначе надо написать else {a.GetTask(w, r, id)}
+	}
+	a.GetTask(w, r, id)
+}
 
-	case r.Method == http.MethodPost:
-		log.Println("We are in MethodPost")
-		a.CreateTask(w, r)
-	case r.Method == http.MethodPut:
-		a.UpdateTask(w, r)
-	case r.Method == http.MethodDelete:
-		idToSearch := r.URL.Query().Get("id") // это параметр запроса
-		if idToSearch != "" {
-			a.DeleteTask(w, r)
-		} else {
-			RenderApiErrorAndResponse(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
-			return
-		}
+func (a *Api) PostTaskHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("We are in MethodPost")
+	a.CreateTask(w, r)
+}
+
+func (a *Api) PutTaskHandler(w http.ResponseWriter, r *http.Request) {
+	a.UpdateTask(w, r)
+}
+
+func (a *Api) DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
+	idToSearch := r.URL.Query().Get("id") // это параметр запроса
+	if idToSearch != "" {
+		a.DeleteTask(w, r)
+	} else {
+		RenderApiErrorAndResponse(w, fmt.Errorf(IdMissingError), http.StatusBadRequest)
+		return
 	}
 }
 
