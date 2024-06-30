@@ -15,7 +15,8 @@ type DRepeat struct {
 }
 
 const (
-	sunday = 7
+	sunday  = 7
+	maxDays = 400
 )
 
 // ParseDRepeat заполняет структуру DRepeat
@@ -24,9 +25,9 @@ const (
 func ParseDRepeat(rule []string) (*DRepeat, error) {
 	next, err := strconv.Atoi(rule[1])
 	if err != nil {
-		return nil, fmt.Errorf("Error in checking days in repeat rule, got '%s'", rule[1])
+		return nil, fmt.Errorf("error in checking days in repeat rule, got '%s'", rule[1])
 	}
-	if next > 0 && next <= 400 {
+	if next > 0 && next <= maxDays {
 		return &DRepeat{num: next}, nil
 	}
 	return nil, fmt.Errorf("expected number of days less than 400, got '%s'", rule[1])
@@ -82,7 +83,7 @@ type WRepeat struct {
 func ParseWRepeat(rule []string) (*WRepeat, error) {
 	// var week: days of week in rule repeat
 	if len(rule) == 1 {
-		return nil, fmt.Errorf("Error in w rule.")
+		return nil, fmt.Errorf("error in w rule")
 	}
 
 	weekDays := []int{}

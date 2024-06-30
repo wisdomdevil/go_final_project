@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	limitConst = 20
+	limitConst   = 20
+	timeTemplate = "20060102"
 )
 
 // чтобы оперировать Tasks (TaskCreationRequest), нужна всегда ссылка на БД
@@ -50,7 +51,7 @@ func (tr TasksRepository) PostTaskDone(id int) (*models.Task, error) {
 		return nil, err
 	}
 
-	dt, err := time.Parse("20060102", t.Date)
+	dt, err := time.Parse(timeTemplate, t.Date)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +79,8 @@ func (tr TasksRepository) PostTaskDone(id int) (*models.Task, error) {
 	return &t, nil
 }
 
-// UpdateTaskInBd - put Method, updates task in DB.
-func (tr TasksRepository) UpdateTaskInBd(t models.Task) error {
+// UpdateTask - put Method, updates task in DB.
+func (tr TasksRepository) UpdateTaskIn(t models.Task) error {
 	_, err := tr.db.Exec("UPDATE scheduler SET date = :date, title = :title, comment = :comment,"+
 		"repeat = :repeat WHERE id = :id",
 		sql.Named("date", t.Date),
@@ -112,7 +113,7 @@ func (tr TasksRepository) GetTask(id int) (models.Task, error) {
 
 // Из таблицы должны вернуться сроки с ближайшими датами.
 func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
-	today := time.Now().Format("20060102")
+	today := time.Now().Format(timeTemplate)
 
 	rows, err := tr.db.Query("SELECT id, date, title, comment, repeat FROM scheduler WHERE date >= :today "+
 		"ORDER BY date LIMIT :limit",
@@ -141,49 +142,6 @@ func (tr TasksRepository) GetAllTasks() ([]models.Task, error) {
 	}
 
 	return result, nil
-}
-
-// ---------------------------
-
-// структуры, методы и интерфейс для абстрагирования параметров поиска
-type DateSearchParam struct {
-	Date time.Time
-}
-
-func (dp *DateSearchParam) GetQueryData() *QueryData {
-	return &QueryData{
-		Param:     dp.Date.Format("20060102"),
-		Condition: "WHERE date LIKE :search",
-	}
-}
-
-type TextSearchParam struct {
-	Text string
-}
-
-func (tp *TextSearchParam) GetQueryData() *QueryData {
-	return &QueryData{
-		Param:     fmt.Sprintf("%%%s%%", tp.Text),
-		Condition: "WHERE title LIKE :search OR comment LIKE :search",
-	}
-}
-
-type SearchQueryData interface {
-	GetQueryData() *QueryData
-}
-
-func QueryDataFromString(search string) SearchQueryData {
-	searchDate, err := time.Parse("02.01.2006", search)
-	if err != nil {
-		return &TextSearchParam{Text: search}
-	} else {
-		return &DateSearchParam{Date: searchDate}
-	}
-}
-
-type QueryData struct {
-	Param     string
-	Condition string
 }
 
 // ---------------------------
@@ -239,7 +197,7 @@ func (tr TasksRepository) DeleteTask(id int) error {
 	return nil
 }
 
-// UpdateTaskInBd updates task in DB according the new date by the rule in repeat.
+// UpdateTask updates task in DB according the new date by the rule in repeat.
 func (tr TasksRepository) UpdateTaskDate(t models.Task, newDate string) error {
 	_, err := tr.db.Exec("UPDATE scheduler SET date = :date WHERE id = :id",
 		sql.Named("date", newDate),

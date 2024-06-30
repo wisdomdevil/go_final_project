@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	DefaultPassword = "123456"
+	defaultPassword = "123456"
+	defaultPort     = "7540"
 )
 
 type Config struct {
@@ -17,14 +18,14 @@ type Config struct {
 // NewConfig конструктор объекта конфигурации приложения
 func NewConfig(appPass string, encKey string, apiPort string) (*Config, error) {
 	if appPass == "" {
-		appPass = DefaultPassword
+		appPass = defaultPassword
 	}
 	if appPass == "" || encKey == "" {
 		return nil, fmt.Errorf("invalid config")
 	}
 
 	if apiPort == "" {
-		apiPort = "7540"
+		apiPort = defaultPort
 	}
 	return &Config{AppPassword: appPass, EncryptionSecretKey: encKey, ApiPort: apiPort}, nil
 }
