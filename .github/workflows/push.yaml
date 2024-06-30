@@ -1,0 +1,22 @@
+name: go-build
+
+on: push 
+  
+jobs:
+  
+    build:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+  
+      - name: Build
+        run: go build -v ./cmd/main.go
+    
+    lint:
+      needs: build
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+        - uses: actions/setup-go@v4
+        - uses: golangci/golangci-lint-action@v3
